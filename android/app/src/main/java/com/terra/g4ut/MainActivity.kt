@@ -59,18 +59,36 @@ class MainActivity : AppCompatActivity() {
     /** Android stuurt verkeer standaard via wifi/4G. Zoek het netwerk met een 192.168.144.x-adres
      *  (Herelink via USB-C) en bind het hele proces eraan, zodat ook de Python-sockets dat gebruiken. */
     private var boundNetwork: Network? = null
+    private var lastNetDesc = ""
+    private fun hostLog(msg: String) {
+        try { api.callAttr("call", "host_log", "{\"msg\":${jsString(msg)}}") } catch (_: Exception) {}
+    }
     private val netTick = object : Runnable {
         override fun run() {
             if (!running) return
             try {
                 val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
                 var found: Network? = null
+                val desc = StringBuilder()
                 for (n in cm.allNetworks) {
                     val lp = cm.getLinkProperties(n) ?: continue
-                    if (lp.linkAddresses.any { it.address.hostAddress?.startsWith("192.168.144.") == true }) { found = n; break }
+                    val caps = cm.getNetworkCapabilities(n)
+                    val kind = when {
+                        caps == null -> "?"
+                        caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
+                        caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+                        caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> "mobiel"
+                        else -> "overig"
+                    }
+                    val addrs = lp.linkAddresses.joinToString(",") { it.address.hostAddress ?: "" }
+                    desc.append("${lp.interfaceName ?: "?"}($kind): $addrs; ")
+                    if (lp.linkAddresses.any { it.address.hostAddress?.startsWith("192.168.144.") == true }) found = n
                 }
+                val d = desc.toString()
+                if (d != lastNetDesc) { lastNetDesc = d; hostLog("netwerken: " + (if (d.isEmpty()) "geen" else d)) }
                 if (found != null && found != boundNetwork) {
                     cm.bindProcessToNetwork(found); boundNetwork = found
+                    hostLog("proces gebonden aan drone-netwerk")
                     web.evaluateJavascript("G4UT.onNet && G4UT.onNet(true)", null)
                 } else if (found == null && boundNetwork != null) {
                     cm.bindProcessToNetwork(null); boundNetwork = null
@@ -93,6 +111,7 @@ class MainActivity : AppCompatActivity() {
         // data buiten de app-sandbox (zichtbaar via USB: Android/data/com.terra.g4ut/files/g4ut)
         val base = File(getExternalFilesDir(null) ?: filesDir, "g4ut").apply { mkdirs() }
         api.callAttr("init", base.absolutePath)
+        hostLog("Android ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT}), ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
 
         // ---- WebView ----
         web = WebView(this)

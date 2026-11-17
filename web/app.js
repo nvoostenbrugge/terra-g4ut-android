@@ -255,10 +255,20 @@ function renderTelem(fr) {
   const tb = $("#telem-table tbody"); tb.innerHTML = Object.entries(S.telemRaw).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
   $("#telem-conn").textContent = `GCS connected = ${t.gcs ? "TRUE" : "FALSE"}\nAirunit connected = ${t.air ? "TRUE" : "FALSE"}\nA-scan frames: ${fr.frames_rx}`;
 }
+let logSeq = 0, logLines = [];
+async function pollLog() {
+  if (!$("#page-telem").classList.contains("active")) return;
+  try {
+    const r = await Bridge.call("log", { since: logSeq });
+    if (r.lines.length) { for (const [s, l] of r.lines) { logSeq = s; logLines.push(l); } logLines = logLines.slice(-400); const el = $("#log"); el.textContent = logLines.join("\n"); el.scrollTop = el.scrollHeight; }
+  } catch (e) {}
+}
+setInterval(pollLog, 1500);
+$("#btn-copy-log").onclick = () => { const txt = logLines.join("\n"); if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => toast("Log gekopieerd")).catch(() => toast("Kopiëren mislukt", true)); };
 $("#btn-copy-telem").onclick = () => { const txt = Object.entries(S.telemRaw).map(([k, v]) => `${k}=${v}`).join("\n"); navigator.clipboard && navigator.clipboard.writeText(txt); toast("Gekopieerd"); };
 
 /* ───────────────────────── tabs / knoppen ───────────────────────── */
-$$(".tab").forEach((b) => b.onclick = () => { $$(".tab").forEach((x) => x.classList.toggle("active", x === b)); $$(".page").forEach((p) => p.classList.toggle("active", p.id === "page-" + b.dataset.tab)); if (b.dataset.tab === "telem" && S.lastFrame) renderTelem(S.lastFrame); });
+$$(".tab").forEach((b) => b.onclick = () => { $$(".tab").forEach((x) => x.classList.toggle("active", x === b)); $$(".page").forEach((p) => p.classList.toggle("active", p.id === "page-" + b.dataset.tab)); if (b.dataset.tab === "telem") { if (S.lastFrame) renderTelem(S.lastFrame); pollLog(); } });
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-act]"); if (!b) return;
   const act = b.dataset.act, val = b.dataset.val != null ? Number(b.dataset.val) : undefined;

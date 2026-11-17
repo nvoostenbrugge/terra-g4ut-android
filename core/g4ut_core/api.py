@@ -8,6 +8,7 @@ from .udp import Link
 from .processing import Engine
 from .project import ProjectStore, project_status
 from . import uploader
+from . import log as _log
 
 VERSION = "0.1.0"
 
@@ -16,6 +17,8 @@ class Core:
     def __init__(self, base_dir: str, teensy_ip: str = TEENSY_IP):
         self.base_dir = base_dir
         os.makedirs(base_dir, exist_ok=True)
+        _log.setup(base_dir)
+        _log.log(f"Core {VERSION} start, base_dir={base_dir}, teensy={teensy_ip}")
         self.settings_path = os.path.join(base_dir, "settings.json")
         self.data_dir = os.path.join(base_dir, "data")
         settings = self._load_settings()
@@ -87,7 +90,7 @@ class Core:
                 res = fn(**(args or {}))
             return {"ok": True, "result": res}
         except Exception as ex:
-            traceback.print_exc()
+            _log.err(f"RPC {method}: {ex}\n{traceback.format_exc()}")
             return {"ok": False, "error": str(ex)}
 
     # --- init / meta ---
@@ -141,6 +144,7 @@ class Core:
 
     def rpc_open_project(self, name):
         info = self.store.open(name)
+        _log.log(f"Project geopend: {name}")
         self.save_settings()
         return {"project": info, "grid": self.store.grid_dict()}
 
@@ -222,6 +226,13 @@ class Core:
     def _after_upload(self):
         if self.store.csv_path:
             self.store._load_grid()
+
+    def rpc_log(self, since=0):
+        return {"lines": [[s, l] for s, l in _log.since(int(since))]}
+
+    def rpc_host_log(self, msg, level="INFO"):
+        _log.log(f"[android] {msg}", level)
+        return True
 
     def rpc_flush(self):
         self.save_settings()

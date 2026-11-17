@@ -8,6 +8,7 @@ from .config import (DEFAULTS, FLAG_DEFAULTS, TEENSY_PARAMS, INT_PARAMS, GATE_MM
                      RECT_LABELS, Y_MID, Y_MAX, Y_DEADBAND, DAMP_GATE_PEAKS, DAMP_A_GRAPH, DAMP_GAIN,
                      STALE_MS, NBPTS)
 from .udp import Link
+from .log import log
 
 
 class Engine:
@@ -271,6 +272,7 @@ class Engine:
         else:
             if last_recv != self._last_data_ts:
                 if self._was_stale:
+                    log("Data hervat -> parameters opnieuw gestuurd")
                     self.resend_all_params()
                 self._last_data_ts = last_recv
                 self._was_stale = False

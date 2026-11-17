@@ -2,6 +2,7 @@
 """UDP-ontvangers (A-scan + telemetrie) en commando-zender. Overgenomen uit Terra_G4UT.py."""
 import socket, struct, threading, time, binascii
 import numpy as np
+from .log import log, err
 from .config import (TEENSY_IP, GCS_IP, AIRUNIT_IP, UDP_DATA_PORT, UDP_CMD_PORT, UDP_TELEM_PORT,
                      NBPTS, TELEM_ALIVE_MS)
 
@@ -42,6 +43,8 @@ class Link:
                 tlast = self.telemetry_last
             if (time.time() - tlast) * 1000 > TELEM_ALIVE_MS:
                 g, a = tcp_reachable(GCS_IP), tcp_reachable(AIRUNIT_IP)
+                if (g, a) != self._conn_cache[1:]:
+                    log(f"Bereikbaar: GCS {GCS_IP}={g}, Airunit {AIRUNIT_IP}={a}")
                 self._conn_cache = (time.time(), g, a)
             time.sleep(2.0)
 
@@ -69,7 +72,9 @@ class Link:
             sock.settimeout(1.0)
         except OSError as ex:
             self.error = f"UDP {UDP_DATA_PORT}: {ex}"
+            err(f"A-scan socket bind mislukt: {ex}")
             return
+        log(f"A-scan UDP luistert op poort {UDP_DATA_PORT}")
 
         MAGIC = 0xA55A
         HEADER_FMT = "<H I H H H H"   # magic, frame_id, idx, count, len, crc
@@ -112,6 +117,8 @@ class Link:
                             self.raw[:arr.size] = arr
                         self.last_recv = time.time()
                         self.frames_rx += 1
+                    if self.frames_rx == 1:
+                        log(f"Eerste A-scan frame ontvangen ({arr.size} samples)")
                 frames.pop(fid, None)
             now = time.time()
             for k in [k for k, v in frames.items() if now - v["ts"] > 0.5]:
@@ -125,7 +132,9 @@ class Link:
             sock.settimeout(1.0)
         except OSError as ex:
             self.error = (self.error + " | " if self.error else "") + f"UDP {UDP_TELEM_PORT}: {ex}"
+            err(f"Telemetrie socket bind mislukt: {ex}")
             return
+        log(f"Telemetrie UDP luistert op poort {UDP_TELEM_PORT}")
         while not self._stop:
             try:
                 pkt, _ = sock.recvfrom(1024)
@@ -155,8 +164,11 @@ class Link:
                     parsed[k] = v
             if parsed:
                 with self.lock:
+                    first = self.telemetry_last == 0.0
                     self.telemetry.update(parsed)
                     self.telemetry_last = time.time()
+                if first:
+                    log(f"Eerste telemetrie ontvangen: {msg[:120]}")
 
     # ---------- status ----------
     def snapshot(self):
@@ -178,6 +190,7 @@ class Link:
             self.cmd_sock.sendto(msg.encode(), (self.teensy_ip, UDP_CMD_PORT))
         except OSError as ex:
             self.error = f"send: {ex}"
+            err(f"Zenden naar {self.teensy_ip}:{UDP_CMD_PORT} mislukt: {ex}")
 
     def send(self, name: str, val):
         if isinstance(val, float):
