@@ -6,6 +6,9 @@ on:
     tags: [ 'v*' ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -36,6 +39,16 @@ jobs:
         with:
           name: TerraG4UT-apk
           path: TerraG4UT-*.apk
+
+      - name: Release "latest" (elke push naar main)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Terra G4UT — laatste build
+          body: "Automatisch gebouwd van commit ${{ github.sha }}. Download de APK hieronder en installeer op de tablet."
+          prerelease: true
+          files: TerraG4UT-*.apk
 
       - name: Release (bij tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
