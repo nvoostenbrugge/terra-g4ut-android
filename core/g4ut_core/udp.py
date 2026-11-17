@@ -184,6 +184,23 @@ class Link:
         _, g, a = self._conn_cache
         return g, a
 
+    def bind_local(self, ip):
+        """Nieuwe zend-socket, gebonden aan een lokaal adres (None = standaard)."""
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            if ip:
+                s.bind((ip, 0))
+            old, self.cmd_sock = self.cmd_sock, s
+            try:
+                old.close()
+            except Exception:
+                pass
+            log(f"Zend-socket gebonden aan {ip or 'standaard'}")
+            return True
+        except OSError as ex:
+            err(f"bind_local({ip}) mislukt: {ex}")
+            return False
+
     # ---------- commando's ----------
     def send_raw(self, msg: str):
         try:

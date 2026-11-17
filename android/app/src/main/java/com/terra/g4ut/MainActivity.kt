@@ -87,8 +87,23 @@ class MainActivity : AppCompatActivity() {
                     desc.append("${lp.interfaceName ?: "?"}($kind): $addrs; ")
                     if (lp.linkAddresses.any { it.address.hostAddress?.startsWith("192.168.144.") == true }) found = n
                 }
-                val d = desc.toString()
-                if (d != lastNetDesc) { lastNetDesc = d; hostLog("netwerken: " + (if (d.isEmpty()) "geen" else d)) }
+                // ook fysieke interfaces die Android niet als Network registreert (usb0/rndis0/eth0)
+                var localIp: String? = null
+                val ifs = StringBuilder()
+                try {
+                    for (ni in java.net.NetworkInterface.getNetworkInterfaces().toList()) {
+                        if (!ni.isUp || ni.isLoopback) continue
+                        val v4 = ni.inetAddresses.toList().filter { it is java.net.Inet4Address }.map { it.hostAddress ?: "" }
+                        if (v4.isEmpty()) continue
+                        ifs.append("${ni.name}=${v4.joinToString("/")}; ")
+                        v4.firstOrNull { it.startsWith("192.168.144.") }?.let { localIp = it }
+                    }
+                } catch (_: Exception) {}
+                val d = desc.toString() + " | interfaces: " + ifs.toString()
+                if (d != lastNetDesc) {
+                    lastNetDesc = d; hostLog("netwerken: " + (if (desc.isEmpty()) "geen" else desc) + " | interfaces: " + ifs)
+                    try { api.callAttr("call", "host_local_ip", "{\"ip\":${jsString(localIp ?: "")}}") } catch (_: Exception) {}
+                }
                 if (found != null && found != boundNetwork) {
                     cm.bindProcessToNetwork(found); boundNetwork = found
                     hostLog("proces gebonden aan drone-netwerk")

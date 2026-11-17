@@ -230,6 +230,10 @@ class Core:
     def rpc_log(self, since=0):
         return {"lines": [[s, l] for s, l in _log.since(int(since))]}
 
+    def rpc_host_local_ip(self, ip=""):
+        """Zend-socket binden aan het lokale 192.168.144.x-adres (voor als Android het netwerk niet registreert)."""
+        return self.link.bind_local(ip or None)
+
     def rpc_host_log(self, msg, level="INFO"):
         _log.log(f"[android] {msg}", level)
         return True
