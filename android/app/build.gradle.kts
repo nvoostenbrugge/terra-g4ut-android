@@ -16,10 +16,20 @@ android {
         versionName = "0.1.0"
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
     }
+    // Vaste signing-sleutel (in repo) zodat elke build als update over de vorige heen kan.
+    signingConfigs {
+        create("terra") {
+            storeFile = rootProject.file("keystore/terra-g4ut.jks")
+            storePassword = "terrag4ut"
+            keyAlias = "terrag4ut"
+            keyPassword = "terrag4ut"
+        }
+    }
     buildTypes {
+        debug { signingConfig = signingConfigs.getByName("terra") }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("terra")
         }
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
