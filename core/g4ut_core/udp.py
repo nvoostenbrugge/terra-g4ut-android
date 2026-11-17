@@ -30,6 +30,7 @@ class Link:
         self.error = ""
         self._stop = False
         self._conn_cache = (0.0, False, False)
+        self._last_send_err = 0.0
 
     # ---------- start ----------
     def start(self):
@@ -207,7 +208,9 @@ class Link:
             self.cmd_sock.sendto(msg.encode(), (self.teensy_ip, UDP_CMD_PORT))
         except OSError as ex:
             self.error = f"send: {ex}"
-            err(f"Zenden naar {self.teensy_ip}:{UDP_CMD_PORT} mislukt: {ex}")
+            if time.time() - self._last_send_err > 10:
+                self._last_send_err = time.time()
+                err(f"Zenden naar {self.teensy_ip}:{UDP_CMD_PORT} mislukt: {ex} (melding max 1x/10s)")
 
     def send(self, name: str, val):
         if isinstance(val, float):
