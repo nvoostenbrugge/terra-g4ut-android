@@ -264,6 +264,7 @@ async function pollLog() {
   } catch (e) {}
 }
 setInterval(pollLog, 1500);
+$("#btn-share-log").onclick = () => { if (window.AndroidBridge && window.AndroidBridge.shareFile) { const r = window.AndroidBridge.shareFile("log.txt"); if (r !== "ok") toast(r, true); } else toast("Delen alleen op Android; log.txt staat in de datamap", true); };
 $("#btn-copy-log").onclick = () => { const txt = logLines.join("\n"); if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => toast("Log gekopieerd")).catch(() => toast("Kopiëren mislukt", true)); };
 $("#btn-copy-telem").onclick = () => { const txt = Object.entries(S.telemRaw).map(([k, v]) => `${k}=${v}`).join("\n"); navigator.clipboard && navigator.clipboard.writeText(txt); toast("Gekopieerd"); };
 

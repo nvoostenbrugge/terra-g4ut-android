@@ -2,6 +2,8 @@ package com.terra.g4ut
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
+import androidx.core.content.FileProvider
 import android.net.ConnectivityManager
 import android.net.Network
 import android.os.Bundle
@@ -34,6 +36,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var web: WebView
     private lateinit var api: PyObject
+    private lateinit var baseDir: File
     private val frameExec = Executors.newSingleThreadExecutor()
     private val handler = Handler(Looper.getMainLooper())
     private val busy = AtomicBoolean(false)
@@ -110,6 +113,7 @@ class MainActivity : AppCompatActivity() {
         api = Python.getInstance().getModule("g4ut_core.api")
         // data buiten de app-sandbox (zichtbaar via USB: Android/data/com.terra.g4ut/files/g4ut)
         val base = File(getExternalFilesDir(null) ?: filesDir, "g4ut").apply { mkdirs() }
+        baseDir = base
         api.callAttr("init", base.absolutePath)
         hostLog("Android ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT}), ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
 
@@ -179,6 +183,24 @@ class MainActivity : AppCompatActivity() {
         fun call(method: String, argsJson: String?): String =
             try { api.callAttr("call", method, argsJson ?: "{}").toString() }
             catch (e: Exception) { "{\"ok\":false,\"error\":\"${(e.message ?: "fout").replace("\"", "'")}\"}" }
+
+        /** Deel log.txt (en optioneel een project-CSV) via het Android-deelmenu. */
+        @JavascriptInterface
+        fun shareFile(relPath: String): String {
+            return try {
+                val f = File(baseDir, relPath)
+                if (!f.exists()) return "bestand niet gevonden: $relPath"
+                val uri = FileProvider.getUriForFile(this@MainActivity, "com.terra.g4ut.files", f)
+                val i = Intent(Intent.ACTION_SEND).apply {
+                    type = if (relPath.endsWith(".csv")) "text/csv" else "text/plain"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_SUBJECT, "Terra G4UT ${f.name}")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                handler.post { startActivity(Intent.createChooser(i, "Deel ${f.name}")) }
+                "ok"
+            } catch (e: Exception) { "fout: ${e.message}" }
+        }
     }
 
     companion object {

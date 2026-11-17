@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <external-files-path name="g4ut" path="g4ut/" />
+    <files-path name="g4ut_int" path="g4ut/" />
+</paths>
