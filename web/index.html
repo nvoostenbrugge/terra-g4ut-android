@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Terra G4UT</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <!-- ───────────── LINKS: status, meetkaarten, plot, tabel ───────────── -->
+  <div id="left">
+    <div id="statusbar">
+      <span id="sb-project">Geen project</span>
+      <span id="sb-upload"></span>
+      <span class="spacer"></span>
+      <span class="led" id="led-gcs"></span><span class="ledtxt">GCS</span>
+      <span class="led" id="led-air"></span><span class="ledtxt">Airunit</span>
+      <button id="btn-upload" class="btn green small">UPLOAD</button>
+    </div>
+    <div id="cards">
+      <div class="card"><div class="ct">PULSE-ECHO</div><div class="cv" id="pe">0.00 mm</div></div>
+      <div class="card main"><div class="ct">ECHO-ECHO</div><div class="cv big" id="ee">0.00 mm</div></div>
+      <div class="card"><div class="ct">2ND ECHO</div><div class="cv" id="e2">0.00 mm</div></div>
+    </div>
+    <div id="plotwrap">
+      <canvas id="plot"></canvas>
+      <div id="toast"></div>
+      <div id="nodata">Geen data — Teensy niet verbonden</div>
+    </div>
+    <div id="strip">
+      <div id="gridwrap"><table id="grid"><thead><tr id="grid-head"></tr></thead><tbody id="grid-body"></tbody></table></div>
+    </div>
+    <div id="actions" class="hidden">
+      <div class="arow" id="pan-row">
+        <button class="btn big" data-act="pan" data-val="-5">◀&nbsp;&nbsp;PAN</button>
+        <button class="btn big" data-act="pan" data-val="5">PAN&nbsp;&nbsp;▶</button>
+      </div>
+      <div class="arow" id="tilt-row">
+        <button class="btn big" data-act="tilt" data-val="5">▲&nbsp;&nbsp;TILT</button>
+        <button class="btn big" data-act="tilt" data-val="-5">▼&nbsp;&nbsp;TILT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────── RECHTS: tabs + knoppen ───────────── -->
+  <div id="right">
+    <div id="tabs">
+      <button class="tab active" data-tab="basics">Basics</button>
+      <button class="tab" data-tab="cal">CAL</button>
+      <button class="tab" data-tab="settings">Settings</button>
+      <button class="tab" data-tab="telem">TELEM</button>
+      <button class="tab" data-tab="project">Project</button>
+    </div>
+    <div id="tabpages">
+      <div class="page active" id="page-basics">
+        <div id="gainbox"><div class="gt">GAIN&nbsp;&nbsp;(swipe)</div><div class="gv" id="gain-val">0.0 dB</div></div>
+        <div class="form" id="form-basics"></div>
+        <div class="sep"></div>
+        <div class="checks">
+          <label class="chk"><input type="checkbox" data-flag="auto_gate_enabled"><span></span>Enable Auto-Gate</label>
+          <label class="chk"><input type="checkbox" data-flag="auto_gain_enabled"><span></span>Enable Auto-Gain</label>
+          <label class="chk"><input type="checkbox" data-flag="leading_edge_measurement"><span></span>Use leading-edge</label>
+          <label class="chk"><input type="checkbox" data-flag="allow_invalid_measurement"><span></span>Allow invalid measurements</label>
+          <label class="chk"><input type="checkbox" data-flag="wrmc_buttons"><span></span>WRMC</label>
+        </div>
+      </div>
+      <div class="page" id="page-cal">
+        <div class="form" id="form-cal"></div>
+        <div class="brow">
+          <button class="btn big" data-act="cal_velocity">CAL Velocity</button>
+          <button class="btn big" data-act="cal_delay">CAL Delay</button>
+        </div>
+        <button class="btn big full" data-act="cal_syringe">CAL Syringe</button>
+      </div>
+      <div class="page" id="page-settings"><div class="form" id="form-settings"></div></div>
+      <div class="page" id="page-telem">
+        <div class="trow"><span id="telem-status">Geen telemetrie.</span><button class="btn small" id="btn-copy-telem">Copy</button></div>
+        <table id="telem-table"><thead><tr><th>Object</th><th>Value</th></tr></thead><tbody></tbody></table>
+        <div id="telem-conn"></div>
+        <div id="diag"></div>
+      </div>
+      <div class="page" id="page-project">
+        <div id="proj-title">Geen project</div>
+        <div id="proj-status"></div>
+        <button class="btn big full" id="btn-project">Open / Nieuw project</button>
+        <button class="btn big full green" id="btn-upload2">UPLOAD</button>
+        <div class="sep"></div>
+        <button class="btn big full red" id="btn-clear">Clear selected measurement</button>
+      </div>
+    </div>
+    <div id="persist">
+      <div id="squares">
+        <button class="sq measure wrmc" data-act="measure">MEASURE</button>
+        <button class="sq gel" data-act="gel" aria-label="GEL"><svg viewBox="0 0 76 30"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fe0ff"/><stop offset="1" stop-color="#1e88e5"/></linearGradient></defs><g fill="url(#g)" stroke="#0d47a1" stroke-width="1.2"><path d="M13 2 C13 2 4 13 4 18.5 a9 9 0 0 0 18 0 C22 13 13 2 13 2 z"/><path d="M38 2 C38 2 29 13 29 18.5 a9 9 0 0 0 18 0 C47 13 38 2 38 2 z"/><path d="M63 2 C63 2 54 13 54 18.5 a9 9 0 0 0 18 0 C72 13 63 2 63 2 z"/></g><g fill="#fff" opacity=".7"><ellipse cx="9" cy="17" rx="1.6" ry="3"/><ellipse cx="34" cy="17" rx="1.6" ry="3"/><ellipse cx="59" cy="17" rx="1.6" ry="3"/></g></svg></button>
+        <button class="sq clean wrmc" data-act="clean">CLEAN</button>
+        <button class="sq save" id="btn-save" aria-label="SAVE"><svg viewBox="0 0 32 32"><path d="M4 3h21l4 4v22a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="#e8e8e8" stroke="#9a9a9a"/><rect x="8" y="3" width="15" height="9" rx="1" fill="#2b2b2b"/><rect x="18" y="4.5" width="3" height="6" rx=".6" fill="#e8e8e8"/><rect x="7" y="18" width="18" height="12" rx="1.2" fill="#3a3a3a"/><rect x="10" y="21" width="12" height="1.6" fill="#9a9a9a"/><rect x="10" y="24.5" width="12" height="1.6" fill="#9a9a9a"/></svg></button>
+      </div>
+      <div class="form" id="form-persist">
+        <div class="row"><label>Notes:</label><input type="text" id="note" placeholder="Type notes here…"></div>
+        <div class="row"><label>Scanline #:</label><div class="spin" id="spin-s"></div></div>
+        <div class="row"><label>Position #:</label><div class="spin" id="spin-p"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────── Modals ───────────── -->
+<div class="modal" id="m-project">
+  <div class="mbox">
+    <div class="mtitle">Kies een project</div>
+    <div class="mrow"><input type="text" id="np-name"><button class="btn green" id="np-create">＋&nbsp; Nieuw project</button></div>
+    <div class="msub">Recente projecten</div>
+    <div class="tiles" id="tiles"></div>
+    <div class="mfoot"><button class="btn" id="np-cancel">Annuleren</button></div>
+  </div>
+</div>
+
+<div class="modal" id="m-upload">
+  <div class="mbox">
+    <div class="mhead"><div class="mtitle">Upload naar 3D Inspect</div><span class="spacer"></span><span id="up-login-state"></span><button class="btn" id="up-login">Inloggen</button></div>
+    <fieldset class="defaults"><legend>Standaardgegevens (1x invullen, worden onthouden)</legend>
+      <div class="dgrid">
+        <label>E-mail (3D Inspect login)<input data-def="email"></label>
+        <label>Device<input data-def="device"></label>
+        <label>Client<input data-def="client"></label>
+        <label>Pilot<input data-def="pilot"></label>
+        <label>Surveyor<input data-def="surveyor"></label>
+      </div>
+    </fieldset>
+    <div class="uptable"><table id="up-table"><thead><tr><th></th><th>Project</th><th>Metingen</th><th>Laatste upload</th><th>Status</th><th>Omschrijving (optioneel)</th><th>Resultaat</th></tr></thead><tbody></tbody></table></div>
+    <div class="mfoot"><span id="up-summary"></span><span class="spacer"></span>
+      <button class="btn" id="up-refresh">Vernieuwen</button>
+      <button class="btn" id="up-sel">Upload aangevinkt</button>
+      <button class="btn green" id="up-all">⬆&nbsp; Upload alles met wijzigingen</button>
+      <button class="btn" id="up-close">Sluiten</button></div>
+  </div>
+</div>
+
+<div class="modal" id="m-login">
+  <div class="mbox small">
+    <div class="mtitle">Inloggen bij 3D Inspect</div>
+    <div class="form">
+      <div class="row"><label>E-mail:</label><input id="li-email" type="email"></div>
+      <div class="row"><label>Wachtwoord:</label><input id="li-pw" type="password"></div>
+      <div class="row"><label>OTP-code:</label><input id="li-otp" placeholder="leeg laten als niet nodig"></div>
+    </div>
+    <div id="li-err"></div>
+    <div class="mfoot"><button class="btn" id="li-cancel">Annuleren</button><button class="btn green" id="li-ok">Inloggen</button></div>
+  </div>
+</div>
+
+<div class="modal" id="m-viewer">
+  <div class="mbox"><div class="mhead"><div class="mtitle" id="vw-title">Golfvorm</div><span class="spacer"></span><button class="btn" id="vw-close">✕</button></div>
+    <canvas id="vw-canvas"></canvas></div>
+</div>
+
+<div class="modal" id="m-busy"><div class="mbox small"><div class="mtitle" id="busy-text">Even geduld…</div></div></div>
+
+<script src="app.js"></script>
+</body>
+</html>

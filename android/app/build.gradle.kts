@@ -1,0 +1,54 @@
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("com.chaquo.python")
+}
+
+android {
+    namespace = "com.terra.g4ut"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "com.terra.g4ut"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 1
+        versionName = "0.1.0"
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
+    }
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+    compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+    kotlinOptions { jvmTarget = "17" }
+    sourceSets {
+        getByName("main") {
+            // web-UI wordt als assets meegebakken (index.html op assets-root)
+            assets.srcDirs(rootProject.layout.projectDirectory.dir("../web"))
+        }
+    }
+}
+
+chaquopy {
+    defaultConfig {
+        version = "3.12"
+        pip {
+            install("numpy")
+            install("requests")
+        }
+    }
+    sourceSets {
+        getByName("main") {
+            srcDir(rootProject.layout.projectDirectory.dir("../core"))
+        }
+    }
+}
+
+dependencies {
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.webkit:webkit:1.12.1")
+}
