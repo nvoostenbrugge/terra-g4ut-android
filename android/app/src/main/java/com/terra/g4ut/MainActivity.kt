@@ -99,9 +99,18 @@ class MainActivity : AppCompatActivity() {
                         v4.firstOrNull { it.startsWith("192.168.144.") }?.let { localIp = it }
                     }
                 } catch (_: Exception) {}
-                val d = desc.toString() + " | interfaces: " + ifs.toString()
+                // USB-apparaten (adapter herkend? welke chip?)
+                val usb = StringBuilder()
+                try {
+                    val um = getSystemService(Context.USB_SERVICE) as android.hardware.usb.UsbManager
+                    for ((_, dev) in um.deviceList) {
+                        usb.append(String.format("%04x:%04x %s %s (klasse %d); ", dev.vendorId, dev.productId,
+                            dev.manufacturerName ?: "", dev.productName ?: "", dev.deviceClass))
+                    }
+                } catch (_: Exception) {}
+                val d = desc.toString() + " | interfaces: " + ifs.toString() + " | usb: " + usb.toString()
                 if (d != lastNetDesc) {
-                    lastNetDesc = d; hostLog("netwerken: " + (if (desc.isEmpty()) "geen" else desc) + " | interfaces: " + ifs)
+                    lastNetDesc = d; hostLog("netwerken: " + (if (desc.isEmpty()) "geen" else desc) + " | interfaces: " + ifs + " | usb: " + (if (usb.isEmpty()) "geen" else usb))
                     try { api.callAttr("call", "host_local_ip", "{\"ip\":${jsString(localIp ?: "")}}") } catch (_: Exception) {}
                 }
                 if (found != null && found != boundNetwork) {
