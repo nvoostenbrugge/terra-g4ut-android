@@ -223,6 +223,10 @@ class Core:
         if self.store.csv_path:
             self.store._load_grid()
 
+    def rpc_flush(self):
+        self.save_settings()
+        return True
+
     def rpc_shutdown(self):
         self.stop()
         return True

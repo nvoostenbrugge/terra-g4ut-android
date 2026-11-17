@@ -37,7 +37,8 @@ const Bridge = (() => {
     ws.onclose = () => { ready = false; setTimeout(connect, 1000); };
   }
   // Android roept dit aan (evaluateJavascript)
-  window.G4UT = { onFrame: (json) => { try { frameCb && frameCb(typeof json === "string" ? JSON.parse(json) : json); } catch (e) { console.error(e); } } };
+  window.G4UT = { onFrame: (json) => { try { frameCb && frameCb(typeof json === "string" ? JSON.parse(json) : json); } catch (e) { console.error(e); } },
+                  onNet: (ok) => { const d = document.querySelector("#diag"); if (d) d.textContent = ok ? "Drone-netwerk (192.168.144.x) gekoppeld" : "Geen 192.168.144.x-netwerk gevonden — Herelink/USB-C aangesloten?"; } };
   return { call, connect, onFrame: (cb) => { frameCb = cb; }, isAndroid };
 })();
 

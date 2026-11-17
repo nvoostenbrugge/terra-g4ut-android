@@ -32,8 +32,18 @@ class Link:
 
     # ---------- start ----------
     def start(self):
-        for target in (self._data_loop, self._telem_loop):
+        for target in (self._data_loop, self._telem_loop, self._probe_loop):
             threading.Thread(target=target, daemon=True).start()
+
+    def _probe_loop(self):
+        """GCS/airunit bereikbaarheid in de achtergrond peilen (blokkeert de meetlus niet)."""
+        while not self._stop:
+            with self.lock:
+                tlast = self.telemetry_last
+            if (time.time() - tlast) * 1000 > TELEM_ALIVE_MS:
+                g, a = tcp_reachable(GCS_IP), tcp_reachable(AIRUNIT_IP)
+                self._conn_cache = (time.time(), g, a)
+            time.sleep(2.0)
 
     def stop(self):
         self._stop = True
@@ -154,16 +164,12 @@ class Link:
             return self.raw, self.last_recv, dict(self.telemetry), self.telemetry_last
 
     def connections(self):
-        """(gcs, airunit) — bij verse telemetrie beide True, anders TCP-probe (max 1x/s)."""
-        now = time.time()
+        """(gcs, airunit) — bij verse telemetrie beide True, anders laatste probe-resultaat."""
         with self.lock:
             tlast = self.telemetry_last
-        if (now - tlast) * 1000 <= TELEM_ALIVE_MS:
+        if (time.time() - tlast) * 1000 <= TELEM_ALIVE_MS:
             return True, True
-        t, g, a = self._conn_cache
-        if now - t > 1.0:
-            g, a = tcp_reachable(GCS_IP), tcp_reachable(AIRUNIT_IP)
-            self._conn_cache = (now, g, a)
+        _, g, a = self._conn_cache
         return g, a
 
     # ---------- commando's ----------

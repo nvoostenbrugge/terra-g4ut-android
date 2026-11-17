@@ -1,6 +1,9 @@
 package com.terra.g4ut
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -49,7 +52,32 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-            handler.postDelayed(this, 33)
+            handler.postDelayed(this, 40)
+        }
+    }
+
+    /** Android stuurt verkeer standaard via wifi/4G. Zoek het netwerk met een 192.168.144.x-adres
+     *  (Herelink via USB-C) en bind het hele proces eraan, zodat ook de Python-sockets dat gebruiken. */
+    private var boundNetwork: Network? = null
+    private val netTick = object : Runnable {
+        override fun run() {
+            if (!running) return
+            try {
+                val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                var found: Network? = null
+                for (n in cm.allNetworks) {
+                    val lp = cm.getLinkProperties(n) ?: continue
+                    if (lp.linkAddresses.any { it.address.hostAddress?.startsWith("192.168.144.") == true }) { found = n; break }
+                }
+                if (found != null && found != boundNetwork) {
+                    cm.bindProcessToNetwork(found); boundNetwork = found
+                    web.evaluateJavascript("G4UT.onNet && G4UT.onNet(true)", null)
+                } else if (found == null && boundNetwork != null) {
+                    cm.bindProcessToNetwork(null); boundNetwork = null
+                    web.evaluateJavascript("G4UT.onNet && G4UT.onNet(false)", null)
+                }
+            } catch (_: Exception) {}
+            handler.postDelayed(this, 3000)
         }
     }
 
@@ -95,12 +123,14 @@ class MainActivity : AppCompatActivity() {
         hideSystemBars()
         running = true
         handler.post(frameTick)
+        handler.post(netTick)
     }
 
     override fun onPause() {
         running = false
         handler.removeCallbacks(frameTick)
-        try { api.callAttr("call", "ui_state", "{}") } catch (_: Exception) {}
+        handler.removeCallbacks(netTick)
+        try { api.callAttr("call", "flush", "{}") } catch (_: Exception) {}
         super.onPause()
     }
 
